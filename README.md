@@ -1,4 +1,4 @@
-#Chess Diffusion
+# Chess Diffusion
 
 ## Overview
 This repository contains an implementation of the paper 'Analog Bits: Generating Discrete Data using Diffusion Models with Self-Conditioning' specifically applied to chess data. Our approach involves casting discrete chess data into bits, performing diffusion, and then reverting the data back to its original discrete categorical form. This work builds upon and modifies the code from [lucidrains' bit-diffusion implementation](https://github.com/lucidrains/bit-diffusion), originally designed for image data.
