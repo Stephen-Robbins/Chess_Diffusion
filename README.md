@@ -23,5 +23,5 @@ We welcome contributions and suggestions for improvements. Please feel free to f
 
 ## Acknowledgments
 - Original implementation of discrete diffusion for images by [lucidrains](https://github.com/lucidrains/bit-diffusion).
-- Inspiration from the paper ['Analog Bits: Generating Discrete Data using Diffusion Models with Self-Conditioning'](https://arxiv.org/abs/2208.04202).
+- Inspiration from the paper [Analog Bits: Generating Discrete Data using Diffusion Models with Self-Conditioning](https://arxiv.org/abs/2208.04202).
 
