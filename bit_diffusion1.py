@@ -309,7 +309,7 @@ class BitDiffusion(nn.Module):
             # calculate x next
 
             img = x_start * alpha_next + pred_noise * sigma_next
-
+            print(img)
         return bits_to_decimal(img)
 
     @torch.no_grad()

@@ -257,7 +257,7 @@ class Unet(nn.Module):
 
         # layers
 
-        self.downs = nn.ModuleList([])
+        self.mids = nn.ModuleList([])
         self.ups = nn.ModuleList([])
         num_resolutions = len(in_out)
 
@@ -269,6 +269,7 @@ class Unet(nn.Module):
                 block_klass(dim_in, dim_in, time_emb_dim = time_dim),
                 Residual(PreNorm(dim_in, LinearAttention(dim_in))),
                 Downsample(dim_in, dim_out) if not is_last else nn.Conv2d(dim_in, dim_out, 3, padding = 1)
+                #nn.Conv2d(dim_out, dim_in, 3, padding = 1)
             ]))
 
         mid_dim = dims[-1]
@@ -283,7 +284,8 @@ class Unet(nn.Module):
                 block_klass(dim_out + dim_in, dim_out, time_emb_dim = time_dim),
                 block_klass(dim_out + dim_in, dim_out, time_emb_dim = time_dim),
                 Residual(PreNorm(dim_out, LinearAttention(dim_out))),
-                Upsample(dim_out, dim_in) if not is_last else  nn.Conv2d(dim_out, dim_in, 3, padding = 1)
+                #Upsample(dim_out, dim_in) if not is_last else  nn.Conv2d(dim_out, dim_in, 3, padding = 1)
+                nn.Conv2d(dim_out, dim_in, 3, padding = 1)
             ]))
 
         self.final_res_block = block_klass(dim * 2, dim, time_emb_dim = time_dim)
@@ -328,4 +330,96 @@ class Unet(nn.Module):
         x = torch.cat((x, r), dim = 1)
 
         x = self.final_res_block(x, t)
+        return self.final_conv(x)
+        
+class ChessCNN(nn.Module):
+    def __init__(self, time_emb_dim=16, channels=4, dim=64, num_blocks=4):
+        super().__init__()
+        self.channels = channels
+        # Adjusted the input channels to 2 * channels to account for self-conditioning
+        self.init_conv = nn.Conv2d(channels * 2, dim, kernel_size=3, padding=1)
+
+        # Time Embedding Layers
+        self.time_mlp = nn.Sequential(
+            LearnedSinusoidalPosEmb(time_emb_dim),
+            nn.Linear(time_emb_dim + 1, dim * 4),
+            nn.GELU(),
+            nn.Linear(dim * 4, dim * 4)
+        )
+
+        # Residual Blocks
+        self.blocks = nn.ModuleList([])
+        for _ in range(num_blocks):
+            self.blocks.append(ResnetBlock(dim, dim, time_emb_dim=dim * 4))
+
+        # Final Convolutional Layer
+        self.final_conv = nn.Conv2d(dim, channels, kernel_size=1)
+
+    def forward(self, x, time, x_self_cond=None):
+        x_self_cond = default(x_self_cond, lambda: torch.zeros_like(x))
+        x = torch.cat((x_self_cond, x), dim=1)
+
+        x = self.init_conv(x)
+        t = self.time_mlp(time)
+
+        # Applying Residual Blocks
+        for block in self.blocks:
+            x = block(x, t)
+
+        return self.final_conv(x)
+class ChessCNN2(nn.Module):
+    def __init__(self, time_emb_dim=16, channels=4, dim=64, num_blocks=4, attention_type='linear'):
+        super().__init__()
+        self.channels = channels
+        self.init_conv = nn.Conv2d(channels * 2, dim, kernel_size=3, padding=1)
+
+        # Time Embedding Layers
+        self.time_mlp = nn.Sequential(
+            LearnedSinusoidalPosEmb(time_emb_dim),
+            nn.Linear(time_emb_dim + 1, dim * 4),
+            nn.GELU(),
+            nn.Linear(dim * 4, dim * 4)
+        )
+
+        # Residual Blocks and Attention Blocks
+        self.blocks = nn.ModuleList([])
+        for i in range(num_blocks):
+            self.blocks.append(ResnetBlock(dim, dim, time_emb_dim=dim * 4))
+            if attention_type == 'linear':
+                self.blocks.append(LinearAttention(dim))
+            else:
+                self.blocks.append(Attention(dim))
+
+        # Adjusting channel size calculation
+        final_channel_size = dim + dim * len(self.blocks)
+
+        # Additional Convolutional Layer to adjust channel dimensions
+        self.adjust_conv = nn.Conv2d(final_channel_size, dim, kernel_size=1)
+
+        # Final Convolutional Layer
+        self.final_conv = nn.Conv2d(dim, channels, kernel_size=1)
+
+    def forward(self, x, time, x_self_cond=None):
+        x_self_cond = default(x_self_cond, lambda: torch.zeros_like(x))
+        x = torch.cat((x_self_cond, x), dim=1)
+
+        x = self.init_conv(x)
+        t = self.time_mlp(time)
+
+        saved_activations = [x]
+
+        # Applying Blocks (Residual and Attention) and saving activations
+        for block in self.blocks:
+            if isinstance(block, ResnetBlock):
+                x = block(x, t)
+            else:
+                x = block(x)
+            saved_activations.append(x)
+
+        # Concatenating saved activations with the output of the last block
+        x = torch.cat(saved_activations, dim=1)
+
+        # Adjust channel dimensions before final convolution
+        x = self.adjust_conv(x)
+
         return self.final_conv(x)
