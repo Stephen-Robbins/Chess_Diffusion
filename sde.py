@@ -4,7 +4,7 @@ import jax.numpy as jnp
 import equinox as eqx
 import diffrax as dfx  # https://github.com/patrick-kidger/diffrax
 import functools as ft
-from CIR_Helper import sample_CIR_multi, score_cir, score_function_numerical
+from CIR_Helper import sample_CIR_multi, score_cir, score_function
 
 
 
@@ -70,7 +70,7 @@ class SDE(ABC):
     return current_x
   
   #@eqx.filter_jit
-  def backward_sample(self, score, data_shape, t1, key, t0=0,  dt=0.001, y=None):
+  def backward_sample(self, score, data_shape, t1, key, t0=0,  dt=0.01, y=None):
     num_steps = int((t1 - t0) / dt)
     times = jnp.linspace(t1, t0, num_steps)  # Create an array of times
     key, subkey = jr.split(key)
@@ -98,7 +98,7 @@ class CIR(SDE):
     def score_loss(self, model, theta_0, data_y, t, key):
         weight=1
         theta_t=sample_CIR_multi(key, theta_0, self.a, self.b, t)
-        true_score=score_function_numerical(theta_t, theta_0, self.a, self.b, t)
+        true_score=score_function(theta_t, theta_0, self.a, self.b, t)
         pred_score = model(t, theta_t)
         return weight * jnp.mean((true_score - pred_score) ** 2)
 

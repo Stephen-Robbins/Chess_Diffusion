@@ -27,7 +27,7 @@ def print_chessboard_from_bitboard(batch, grid_width=4):
     for i, bitboard in enumerate(batch):
         fen = bitboard_to_fen(bitboard)
         board = chess.Board(fen)
-        board_svg = chess.svg.board(board, size=100)
+        board_svg = chess.svg.board(board, size=200)
         html += f"<td>{board_svg}</td>"
         if (i + 1) % grid_width == 0 and (i + 1) != len(batch):
             html += "</tr><tr>"

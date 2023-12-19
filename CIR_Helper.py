@@ -4,6 +4,7 @@ from jax.scipy.special import i0  # Modified Bessel function of the first kind
 import jax
 import numpy as np
 from scipy.special import iv
+import functools as ft
 
 jax.config.update("jax_enable_x64", True)
 
@@ -41,8 +42,7 @@ def sample_CIR_multi(key, thetas, a, b, T):
    
     theta_shape = thetas.shape
     cir_processes = jnp.zeros(theta_shape)
-    num_processes = int(jnp.prod(jnp.array(theta_shape)))
-
+    num_processes = 8*8*13
     keys = jr.split(key, num_processes)
 
     idx = 0  
@@ -83,7 +83,7 @@ def score_cir(theta_t, theta_0, a, b, t):
     return score
 
 
-def transition_density_cir(theta_t, theta_0,  b, t):
+def transition_density_cir(theta_t, theta_0, a,  b, t):
     """
     Compute the transition density for the CIR process using the provided formula.
     ONLY FOR a=1
@@ -98,31 +98,14 @@ def transition_density_cir(theta_t, theta_0,  b, t):
 
     return density
 
-def log_transition_density_cir(theta_t, theta_0, b, t):
-    return jnp.log(transition_density_cir(theta_t, theta_0, b, t))
+def log_transition_density_cir(theta_t, theta_0,a,  b, t):
+    return jnp.log(transition_density_cir(theta_t, theta_0, a, b, t))
 
-# Gradient function for log_transition_density_cir
-grad_log_transition = jax.grad(log_transition_density_cir, argnums=0)
+def single_element_gradient(theta_t, theta_0, a,  b, t):
+    # Compute the gradient for a single element
+    return jax.grad(log_transition_density_cir, argnums=0)(theta_t, theta_0,a, b, t)
 
-# Vectorize the gradient computation
-elementwise_grad = jax.vmap(grad_log_transition, in_axes=(0, 0, None, None))
-
-def score_function_numerical(theta_t, theta_0, a, b, t):
-    # Flatten the theta_t and theta_0 arrays to 1D
-    theta_t_flat = theta_t.reshape(-1)
-    theta_0_flat = theta_0.reshape(-1)
-
-    # Define a function that computes the gradient for a single element
-    def single_element_grad(theta_t_elem, theta_0_elem):
-        return jax.grad(log_transition_density_cir, argnums=0)(theta_t_elem, theta_0_elem, b, t)
-
-    # Vectorize the single-element gradient computation
-    vectorized_grad = jax.vmap(single_element_grad, in_axes=(0, 0))
-
-    # Compute the gradient for each element
-    gradients_flat = vectorized_grad(theta_t_flat, theta_0_flat)
-
-    # Reshape the gradients back to the original shape
-    gradients = gradients_flat.reshape(13, 8, 8)
-
-    return gradients
+def score_function(theta_t, theta_0, a, b, t):
+    # Vectorize the single_element_gradient function across all dimensions
+    batched_grad_fn = jax.vmap(jax.vmap(jax.vmap(ft.partial(single_element_gradient, a=a, b=b, t=t))))
+    return batched_grad_fn(theta_t, theta_0)

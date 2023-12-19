@@ -16,6 +16,7 @@ def one_hot_encode_max_value(batch):
 
     return one_hot_encoded
 
+
 def batch_loss_fn(model,  sde, data, data_y, t1, key):
     batch_size = data.shape[0]
     
@@ -63,14 +64,14 @@ def main(
     t1=5.0,
     # Optimisation hyperparameters
     num_steps=1_000_000,
-    lr=1e-5,
+    lr=1e-4,
     batch_size=32,
-    print_every=1,
+    print_every=100,
     # Sampling hyperparameters
-    dt0=0.001,
-    sample_size=12,
+    dt0=0.1,
+    sample_size=4,
     # Seed
-    seed=2234,
+    seed=24,
 ):
     key = jr.PRNGKey(seed)
     train_key, loader_key,loader_key2, sample_key = jr.split(key, 4)
@@ -91,15 +92,17 @@ def main(
         
         total_value += value.item()
         total_size += 1
+    
+        print((f"Step={step} Loss={value.item()}"))
         if ((step % print_every) == 0) or step == num_steps - 1:
             print(f"Step={step} Loss={total_value / total_size}")
             total_value = 0
             total_size = 0
             
             vmap_key = jr.split(sample_key, sample_size)
+            
             sample_fn = ft.partial(sde.backward_sample, model, data_shape, t1)
             sample = jax.vmap(sample_fn)(vmap_key, y=data_y)
-            
             sample = one_hot_encode_max_value(sample)
 
             sample_key = jr.split(sample_key, 1)[0]

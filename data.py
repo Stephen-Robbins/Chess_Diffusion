@@ -53,4 +53,4 @@ def sample_bitboards(n):
     bitboards = [fen_to_bitboard(fen) for fen in sampled_fens]
 
     # Stack all the bitboards into a single JAX array
-    return jnp.stack(bitboards)
+    return jnp.stack(bitboards)+0.01
