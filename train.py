@@ -71,7 +71,7 @@ def main(
     dt0=0.1,
     sample_size=4,
     # Seed
-    seed=24,
+    seed=12,
 ):
     key = jr.PRNGKey(seed)
     train_key, loader_key,loader_key2, sample_key = jr.split(key, 4)

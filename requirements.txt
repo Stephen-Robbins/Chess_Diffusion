@@ -1,0 +1,7 @@
+equinox
+jax
+optax
+einops
+matplotlib
+diffrax
+chess

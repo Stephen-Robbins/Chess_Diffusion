@@ -1,6 +1,6 @@
 import jax.random as jr
 import jax.numpy as jnp
-from jax.scipy.special import i0  # Modified Bessel function of the first kind
+from jax.scipy.special import i0, i1, gamma # Modified Bessel function of the first kind
 import jax
 import numpy as np
 from scipy.special import iv
@@ -8,6 +8,24 @@ import functools as ft
 
 jax.config.update("jax_enable_x64", True)
 
+def I_minus_one(x, num_terms=20):
+    """
+    Compute the Modified Bessel function of the first kind of order -1 using NumPy.
+
+    Parameters:
+    x (float): The point at which to evaluate the function.
+    num_terms (int): Number of terms to use in the series expansion.
+
+    Returns:
+    float: The value of the Modified Bessel function of the first kind of order -1 at x.
+    """
+    sum = 0.0
+    for k in range(num_terms):
+        
+        sum += (x/2)**(2*k - 1) / (gamma(k) * gamma(k+1))
+        
+       
+    return sum
 
     
 def _random_chi2(key, df, shape=(), dtype=jnp.float_):
@@ -71,12 +89,19 @@ def score_cir(theta_t, theta_0, a, b, t):
     exp_bt = jnp.exp(-b * t)
     z = 2 * c * jnp.sqrt(exp_bt * theta_t * theta_0)
 
-    # Compute the parts of the score function based on the Wolfram Alpha result
+   
     term1 = -c
     term2 = (a - 1) / (2 * theta_t)
-    term3_numerator = c * exp_bt * theta_0 * (iv(a - 2, z) + iv(a, z))
 
-    term3_denominator = 2 * jnp.sqrt(exp_bt * theta_t * theta_0) * iv(a - 1, z)
+
+
+    term3_numerator = c * exp_bt * theta_0 * (I_minus_one(z) + i1(z))
+    term3_numerator=jnp.where(jnp.isinf(term3_numerator), 0, term3_numerator)
+    
+    term3_denominator = 2 * jnp.sqrt(exp_bt * theta_t * theta_0) * i0(z)
+    
+  
+    
     term3 = term3_numerator / term3_denominator
     # Combine all terms to get the score
     score = term1 + term2 + term3
@@ -94,7 +119,9 @@ def transition_density_cir(theta_t, theta_0, a,  b, t):
     """
     c=1/(1-jnp.exp(-b*t))
     bessel_term = i0(2 * c * jnp.sqrt(theta_0 * theta_t * jnp.exp(-b * t)))
+    
     density = c * jnp.exp(-c * (theta_0 * jnp.exp(-b *t) + theta_t))  * bessel_term
+    
 
     return density
 

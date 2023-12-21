@@ -5,7 +5,7 @@ import equinox as eqx
 import diffrax as dfx  # https://github.com/patrick-kidger/diffrax
 import functools as ft
 from CIR_Helper import sample_CIR_multi, score_cir, score_function
-
+import jax
 
 
 class SDE(ABC):
@@ -98,9 +98,13 @@ class CIR(SDE):
     def score_loss(self, model, theta_0, data_y, t, key):
         weight=1
         theta_t=sample_CIR_multi(key, theta_0, self.a, self.b, t)
-        true_score=score_function(theta_t, theta_0, self.a, self.b, t)
+        
+        
+        
+        score=score_cir(theta_t, theta_0, self.a, self.b, t)
         pred_score = model(t, theta_t)
-        return weight * jnp.mean((true_score - pred_score) ** 2)
+      
+        return weight * jnp.mean((score - pred_score) ** 2)
 
 
     def Drift(self, theta_t,  t, y=None):
