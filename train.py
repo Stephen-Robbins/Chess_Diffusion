@@ -32,7 +32,7 @@ def batch_loss_fn(model,  sde, data, data_y, t1, key):
     return jnp.mean(loss_fn(data, data_y, t, losskey))
 
 
-#@eqx.filter_jit
+@eqx.filter_jit
 def make_step(model, sde, data, data_y, t1, key, opt_state, opt_update):
     
     loss_fn = eqx.filter_value_and_grad(batch_loss_fn)
