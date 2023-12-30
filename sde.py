@@ -41,11 +41,8 @@ class SDE(ABC):
     Samples from the backward sde
 
     """
-    if y is not None:
-        x_and_y = jnp.concatenate([x, y], axis=0)
-        score=score(x_and_y, t)
-    else:
-        score=score(t, x)
+    
+    score=score(t, x)
 
     return self.Drift(x, t, y)-(self.Diffusion(x, t)**2*score)-2
   
